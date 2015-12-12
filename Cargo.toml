@@ -1,4 +1,4 @@
 [package]
-name = "day1"
+name = "2015-adventofcode-rust"
 version = "0.1.0"
 authors = ["Jamin <jamin@bitlag.net>"]
