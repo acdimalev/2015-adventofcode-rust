@@ -1,5 +1,5 @@
-use std::slice::Iter;
 use std::io::{self, Read};
+use std::collections::HashSet;
 
 #[derive(Debug, PartialEq)]
 enum Direction {
@@ -11,12 +11,23 @@ enum Direction {
 
 type Location = (i32, i32);
 
-struct HousePath<'a> {
+struct HousePath<I: Iterator<Item=Direction>> {
     location: Option<Location>,
-    directions: Iter<'a, Direction>,
+    directions: I,
 }
 
-impl<'a> Iterator for HousePath<'a> {
+impl<I: Iterator<Item=Direction>> HousePath<I> {
+    fn from_directions<U>(directions: U) -> Self where
+        U: IntoIterator<IntoIter=I,Item=Direction>
+    {
+        HousePath {
+            location: Some((0, 0)),
+            directions: directions.into_iter(),
+        }
+    }
+}
+
+impl<I: Iterator<Item=Direction>> Iterator for HousePath<I> {
     type Item = Location;
 
     fn next(&mut self) -> Option<Location> {
@@ -29,13 +40,13 @@ impl<'a> Iterator for HousePath<'a> {
 
         // calculate next location
         self.location = match self.directions.next() {
-            Some(&Direction::North) =>
+            Some(Direction::North) =>
                 Some((location.0, location.1 + 1)),
-            Some(&Direction::South) =>
+            Some(Direction::South) =>
                 Some((location.0, location.1 - 1)),
-            Some(&Direction::East) =>
+            Some(Direction::East) =>
                 Some((location.0 + 1, location.1)),
-            Some(&Direction::West) =>
+            Some(Direction::West) =>
                 Some((location.0 - 1, location.1)),
             None => None,
         };
@@ -69,10 +80,7 @@ fn test_iterator_for_house_path() {
     ];
 
     for (directions, reference_locations) in examples.into_iter() {
-        let house_path = HousePath{
-            location: Some((0, 0)),
-            directions: directions.iter(),
-        };
+        let house_path = HousePath::from_directions(directions);
 
         let locations: Vec<_> = house_path.collect();
         assert_eq!(locations, reference_locations);
@@ -124,12 +132,27 @@ fn main() {
 
     stdin.read_to_string(&mut buf).unwrap();
 
-    // the below does not work due to a type mismatch
-    // (expected struct `core::slice::Iter`,
-    //     found struct `core::iter::FilterMap`) [E0308]
+    let directions = buf.chars().filter_map(parser);
+    let house_path = HousePath::from_directions(directions);
+    let houses: HashSet<_> = house_path.collect();
 
-    // let house_path = HousePath {
-    //     directions: buf.chars().filter_map(parser),
-    //     location: Some((0, 0)),
-    // };
+    println!("{:?}", houses.len());
+}
+
+#[test]
+fn test() {
+    let examples: Vec<(&str, usize)> = vec![
+        ( ">", 2 ),
+        ( "^>v<", 4 ),
+        ( "^v^v^v^v^v", 2 ),
+    ];
+
+    for (string, reference_count) in examples.into_iter() {
+        let directions = string.chars().filter_map(parser);
+        let house_path = HousePath::from_directions(directions);
+        let houses: HashSet<_> = house_path.collect();
+        let count = houses.len();
+
+        assert_eq!(count, reference_count);
+    }
 }
